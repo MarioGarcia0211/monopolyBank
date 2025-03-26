@@ -1,0 +1,17 @@
+.container-transaction {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+.card-transaction {
+    width: 100%;
+    max-width: 900px;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+
+.card-body-transaction {
+    padding: 2rem;
+}
