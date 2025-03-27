@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { getFirestore, doc, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { BsBoxArrowRight } from "react-icons/bs";
 import "../styles/gameBoard.css";
 
 const GameBoard = () => {
@@ -47,17 +48,21 @@ const GameBoard = () => {
                     </ul>
 
 
-                    <div className="d-flex justify-content-between mt-3">
+                    <div className="d-flex justify-content-between mt-3 gap-2">
                         <div className="dropdown">
-                            <button className="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                Opciones
+                            <button className="btn btn-secondary btn-despegable dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <BsBoxArrowRight />
                             </button>
                             <ul className="dropdown-menu">
                                 <li><a className="dropdown-item" href="#">Bancarrota</a></li>
                                 <li><a className="dropdown-item" href="#">Salir del juego</a></li>
                             </ul>
                         </div>
-                        <button className="btn btn-primary">Transacciones</button>
+                        <button className="btn btn-primary btn-transacciones">
+                            <Link to={`/transaction/${codigo}`} className="text-white text-decoration-none">
+                                Transacciones
+                            </Link>
+                        </button>
                     </div>
                 </div>
             </div>

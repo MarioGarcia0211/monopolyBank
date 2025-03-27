@@ -21,7 +21,7 @@ function App() {
             <Route path="/create-game" element={<CreateGame />} />
             <Route path="/join-game" element={<JoinGame />}/>
             <Route path="/partida/:codigo" element={<GameBoard/>}/>
-            <Route path="/transaction" element={<Transaction/>} />
+            <Route path="/transaction/:codigo" element={<Transaction />} />
           </Routes>
           <ToastContainer />
         </div>

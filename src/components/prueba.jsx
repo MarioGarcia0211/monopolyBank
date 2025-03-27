@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";  // Importar useParams
 import { getFirestore, doc, updateDoc, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { toast } from "react-toastify";
 import "../styles/transaction.css";
 
 const Transaction = () => {
@@ -34,7 +33,7 @@ const Transaction = () => {
     const handleConfirmar = async (e) => {
         e.preventDefault();
         if (!monto || isNaN(monto) || monto <= 0) {
-            toast.error("Ingrese un monto válido.", {autoClose: 3000, theme:"light"})
+            alert("Ingrese un monto válido.");
             return;
         }
 
@@ -43,17 +42,17 @@ const Transaction = () => {
         const jugadorDestino = partida?.jugadores.find(j => j.uid === destino);
 
         if (!jugadorActual) {
-            toast.error("Jugador no encontrado.", {autoClose: 3000, theme:"light"})
+            alert("Jugador no encontrado.");
             return;
         }
 
         if (tipo === "enviar") {
             if (!jugadorDestino) {
-                toast.error("Seleccione un destino válido.", {autoClose: 3000, theme:"light"})
+                alert("Seleccione un destino válido.");
                 return;
             }
             if (jugadorActual.saldo < montoNum) {
-                toast.error("Saldo insuficiente.", {autoClose: 3000, theme:"light"})
+                alert("Saldo insuficiente.");
                 return;
             }
 
@@ -149,7 +148,7 @@ const Transaction = () => {
                                     <div key={index} className="list-group-item d-flex justify-content-between">
                                         <div>
                                             <h6 className="mb-1">
-                                                {t.origen} {t.tipo === "enviar" ? "->" : "<-"} {t.destino}
+                                                {t.origen} {t.tipo === "enviar" ? "→" : "⤴"} {t.destino}
                                             </h6>
                                             <small className="text-muted">
                                                 {t.tipo === "enviar" ? "Transferencia" : "Depósito del banco"}
