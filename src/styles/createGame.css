@@ -12,3 +12,15 @@
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
     border-radius: 10px;
 }
+
+.codigo-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.codigo-container button {
+    padding: 5px 8px;
+    font-size: 1rem;
+}

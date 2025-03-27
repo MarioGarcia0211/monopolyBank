@@ -3,15 +3,14 @@ import {
     getFirestore,
     doc,
     setDoc,
-    query,
-    collection,
-    where,
-    getDocs,
     updateDoc,
     onSnapshot
 } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { BsFiles } from "react-icons/bs";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "../styles/createGame.css";
 
 const CreateGame = () => {
@@ -22,7 +21,6 @@ const CreateGame = () => {
     const auth = getAuth();
     const db = getFirestore();
     const navigate = useNavigate();
-
     const isExecuted = useRef(false);
 
     const generarCodigo = () => Math.floor(1000 + Math.random() * 9000).toString();
@@ -30,17 +28,15 @@ const CreateGame = () => {
     useEffect(() => {
         if (isExecuted.current) return;
         isExecuted.current = true;
-    
+
         const crearNuevaPartida = async () => {
             const user = auth.currentUser;
             if (!user) return;
-    
+
             const userNombre = user.displayName || "Jugador";
-    
-            // Generar un nuevo código de partida
             const nuevoCodigo = generarCodigo();
             const partidasRef = doc(db, "partidas", nuevoCodigo);
-    
+
             await setDoc(partidasRef, {
                 codigo: nuevoCodigo,
                 estado: "No iniciada",
@@ -50,32 +46,34 @@ const CreateGame = () => {
                     { uid: user.uid, nombre: userNombre, saldo: 1500 }
                 ]
             });
-    
+
             setCodigo(nuevoCodigo);
             setParticipantes([{ uid: user.uid, nombre: userNombre, saldo: 1500 }]);
             setEstado("No iniciada");
-    
-            // Escuchar cambios en la partida
+
             const unsub = onSnapshot(partidasRef, (docSnap) => {
                 if (docSnap.exists()) {
                     setParticipantes(docSnap.data().jugadores);
                     setEstado(docSnap.data().estado);
-    
+
                     if (docSnap.data().estado === "iniciada") {
                         navigate(`/partida/${nuevoCodigo}`);
                     }
                 }
             });
-    
+
             return () => unsub();
         };
-    
+
         crearNuevaPartida();
     }, [navigate]);
-    
+
     const copiarCodigo = () => {
         navigator.clipboard.writeText(codigo);
-        alert("Código copiado: " + codigo);
+        toast.success("Código copiado al portapapeles!", {
+            autoClose: 2000,
+            theme: "light",
+        });
     };
 
     const iniciarPartida = async () => {
@@ -87,7 +85,12 @@ const CreateGame = () => {
         <div className="container-create text-center">
             <div className="card card-create">
                 <div className="card-body card-body-create">
-                    <h3 className="me-2">Código: {codigo}</h3>
+                    <h3 className="codigo-container">
+                        Código: <span>{codigo}</span>
+                        <button className="btn btn-outline-secondary" onClick={copiarCodigo}>
+                            <BsFiles />
+                        </button>
+                    </h3>
 
                     <h5>Estado de la partida: <span className="badge bg-info">{estado}</span></h5>
 
@@ -109,7 +112,6 @@ const CreateGame = () => {
                                 Volver
                             </button>
                         </div>
-
                     )}
                 </div>
             </div>
