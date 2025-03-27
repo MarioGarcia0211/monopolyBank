@@ -12,6 +12,7 @@ const Transaction = () => {
     const [destino, setDestino] = useState("");
     const [partida, setPartida] = useState(null);
     const [transacciones, setTransacciones] = useState([]);
+    const [jugadorActual, setJugadorActual] = useState(null);
 
     const db = getFirestore();
     const auth = getAuth();
@@ -23,13 +24,17 @@ const Transaction = () => {
         const partidaRef = doc(db, "partidas", codigo);
         const unsub = onSnapshot(partidaRef, (docSnap) => {
             if (docSnap.exists()) {
-                setPartida(docSnap.data());
-                setTransacciones(docSnap.data().transacciones || []);
+                const partidaData = docSnap.data();
+                setPartida(partidaData);
+                setTransacciones(partidaData.transacciones || []);
+
+                const jugador = partidaData.jugadores.find(j => j.uid === usuarioActual?.uid);
+                setJugadorActual(jugador);
             }
         });
 
         return () => unsub();
-    }, [codigo, db]);
+    }, [codigo, db, usuarioActual]);
 
     const handleConfirmar = async (e) => {
         e.preventDefault();
@@ -39,7 +44,6 @@ const Transaction = () => {
         }
 
         const montoNum = parseFloat(monto);
-        const jugadorActual = partida?.jugadores.find(j => j.uid === usuarioActual?.uid);
 
         if (!jugadorActual) {
             toast.error("Jugador no encontrado.", { autoClose: 3000, theme: "light" });
@@ -51,7 +55,8 @@ const Transaction = () => {
             origen: jugadorActual.nombre,
             destino: "",
             monto: montoNum,
-            tipo: tipo
+            tipo: tipo,
+            fecha: new Date().toLocaleString() // Agrega la fecha y hora
         };
 
         if (tipo === "enviar") {
@@ -94,9 +99,19 @@ const Transaction = () => {
             <div className="card card-transaction">
                 <div className="card-body card-body-transaction">
                     <form onSubmit={handleConfirmar}>
-                        <h2 className="text-center">Transacciones</h2>
+                        <h4 className="text-center">Transacciones</h4>
 
                         <div className="row align-items-center">
+                            <div className="col-md-6">
+                                <label className="form-label">Usuario Actual</label>
+                                <input type="text" className="form-control" value={jugadorActual?.nombre || ""} readOnly />
+                            </div>
+
+                            <div className="col-md-6">
+                                <label className="form-label">Saldo</label>
+                                <input type="number" className="form-control" value={jugadorActual?.saldo || 0} readOnly />
+                            </div>
+
                             <div className="col-md-4">
                                 <label className="form-label">Monto</label>
                                 <input
@@ -151,25 +166,28 @@ const Transaction = () => {
 
                         <div className="border-top pt-3 p-0">
                             <h5 className="text-center">Historial de transacciones</h5>
-                            <div className="list-group list-group-historial">
-                                {transacciones.map((t, index) => (
-                                    <div key={index} className="list-group-item list-group-item-historial d-flex justify-content-between">
-                                        <div>
-                                            <h6 className="mb-1">
-                                                {t.tipo === "enviar" || t.tipo === "pagar" ? `${t.origen} -> ${t.destino}` : `${t.destino} -> ${t.origen}`}
-                                            </h6>
-                                            <small className="text-muted">
-                                                {t.tipo === "enviar" ? "Transferencia" : t.tipo === "cobrar" ? "Depósito del banco" : "Pago al banco"}
-                                            </small>
+                            <div className="historial-container">
+                                <div className="list-group list-group-historial">
+                                    {transacciones.slice().reverse().map((t, index) => (
+                                        <div key={index} className="list-group-item list-group-item-historial d-flex justify-content-between">
+                                            <div>
+                                                <h6 className="mb-1">
+                                                    {t.tipo === "enviar" || t.tipo === "pagar" ? `${t.origen} -> ${t.destino}` : `${t.destino} -> ${t.origen}`}
+                                                </h6>
+                                                <small className="text-muted">
+                                                    {t.tipo === "enviar" ? "Transferencia" : t.tipo === "cobrar" ? "Depósito del banco" : "Pago al banco"}
+                                                </small>
+                                                <br />
+                                                <small className="text-muted">{t.fecha}</small> {/* Muestra la fecha de la transacción */}
+                                            </div>
+                                            <span className={`badge ${t.tipo === "enviar" || t.tipo === "pagar" ? "bg-danger" : "bg-success"}`}>
+                                                {t.tipo === "enviar" || t.tipo === "pagar" ? "- $" : "+ $"}{Math.abs(t.monto)}
+                                            </span>
                                         </div>
-                                        <span className={`badge ${t.tipo === "enviar" || t.tipo === "pagar" ? "bg-danger" : "bg-success"}`}>
-                                            {t.tipo === "enviar" || t.tipo === "pagar" ? "- $" : "+ $"}{Math.abs(t.monto)}
-                                        </span>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
-
 
                     </form>
                 </div>

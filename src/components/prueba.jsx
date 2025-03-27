@@ -1,76 +1,88 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";  // Importar useParams
+import { useParams } from "react-router-dom";
 import { getFirestore, doc, updateDoc, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { toast } from "react-toastify";
 import "../styles/transaction.css";
 
 const Transaction = () => {
-    const { codigo } = useParams(); // Obtener el código de la URL
+    const { codigo } = useParams();
     const [monto, setMonto] = useState("");
     const [tipo, setTipo] = useState("enviar");
     const [destino, setDestino] = useState("");
     const [partida, setPartida] = useState(null);
     const [transacciones, setTransacciones] = useState([]);
+    const [jugadorActual, setJugadorActual] = useState(null); // Estado para el jugador actual
 
     const db = getFirestore();
     const auth = getAuth();
     const usuarioActual = auth.currentUser;
 
     useEffect(() => {
-        if (!codigo) return;  // Evita ejecutar si codigo es undefined
+        if (!codigo) return;
 
         const partidaRef = doc(db, "partidas", codigo);
         const unsub = onSnapshot(partidaRef, (docSnap) => {
             if (docSnap.exists()) {
-                setPartida(docSnap.data());
-                setTransacciones(docSnap.data().transacciones || []);
+                const partidaData = docSnap.data();
+                setPartida(partidaData);
+                setTransacciones(partidaData.transacciones || []);
+
+                // Buscar el jugador actual en la partida
+                const jugador = partidaData.jugadores.find(j => j.uid === usuarioActual?.uid);
+                setJugadorActual(jugador);
             }
         });
 
         return () => unsub();
-    }, [codigo, db]);
+    }, [codigo, db, usuarioActual]);
 
     const handleConfirmar = async (e) => {
         e.preventDefault();
         if (!monto || isNaN(monto) || monto <= 0) {
-            alert("Ingrese un monto válido.");
+            toast.error("Ingrese un monto válido.", { autoClose: 3000, theme: "light" });
             return;
         }
 
         const montoNum = parseFloat(monto);
-        const jugadorActual = partida?.jugadores.find(j => j.uid === usuarioActual?.uid);
-        const jugadorDestino = partida?.jugadores.find(j => j.uid === destino);
 
         if (!jugadorActual) {
-            alert("Jugador no encontrado.");
+            toast.error("Jugador no encontrado.", { autoClose: 3000, theme: "light" });
             return;
         }
 
-        if (tipo === "enviar") {
-            if (!jugadorDestino) {
-                alert("Seleccione un destino válido.");
-                return;
-            }
-            if (jugadorActual.saldo < montoNum) {
-                alert("Saldo insuficiente.");
-                return;
-            }
-
-            // Actualizar saldos
-            jugadorActual.saldo -= montoNum;
-            jugadorDestino.saldo += montoNum;
-        } else if (tipo === "cobrar") {
-            jugadorActual.saldo += montoNum;
-        }
-
-        // Agregar la transacción al historial
-        const nuevaTransaccion = {
+        let nuevaTransaccion = {
             id: Date.now(),
             origen: jugadorActual.nombre,
-            destino: tipo === "enviar" ? jugadorDestino.nombre : "Banco",
+            destino: "",
             monto: montoNum,
             tipo: tipo
         };
+
+        if (tipo === "enviar") {
+            const jugadorDestino = partida?.jugadores.find(j => j.uid === destino);
+            if (!jugadorDestino) {
+                toast.error("Seleccione un destino válido.", { autoClose: 3000, theme: "light" });
+                return;
+            }
+            if (jugadorActual.saldo < montoNum) {
+                toast.error("Saldo insuficiente.", { autoClose: 3000, theme: "light" });
+                return;
+            }
+            jugadorActual.saldo -= montoNum;
+            jugadorDestino.saldo += montoNum;
+            nuevaTransaccion.destino = jugadorDestino.nombre;
+        } else if (tipo === "cobrar") {
+            jugadorActual.saldo += montoNum;
+            nuevaTransaccion.destino = "Banco";
+        } else if (tipo === "pagar") {
+            if (jugadorActual.saldo < montoNum) {
+                toast.error("Saldo insuficiente para pagar al banco.", { autoClose: 3000, theme: "light" });
+                return;
+            }
+            jugadorActual.saldo -= montoNum;
+            nuevaTransaccion.destino = "Banco";
+        }
 
         const partidaRef = doc(db, "partidas", codigo);
         await updateDoc(partidaRef, {
@@ -87,12 +99,25 @@ const Transaction = () => {
             <div className="card card-transaction">
                 <div className="card-body card-body-transaction">
                     <form onSubmit={handleConfirmar}>
-                        <h2 className="text-center">Transacciones</h2>
+                        <h4 className="text-center">Transacciones</h4>
 
                         <div className="row align-items-center">
+                            {/* Usuario Actual */}
+                            <div className="col-md-6">
+                                <label className="form-label">Usuario Actual</label>
+                                <input type="text" className="form-control" value={jugadorActual?.nombre || ""} readOnly />
+                            </div>
+
+                            {/* Saldo Actual */}
+                            <div className="col-md-6">
+                                <label className="form-label">Saldo</label>
+                                <input type="number" className="form-control" value={jugadorActual?.saldo || 0} readOnly />
+                            </div>
+
+                            {/* Monto */}
                             <div className="col-md-4">
                                 <label className="form-label">Monto</label>
-                                <input 
+                                <input
                                     type="number"
                                     className="form-control"
                                     value={monto}
@@ -100,22 +125,25 @@ const Transaction = () => {
                                 />
                             </div>
 
+                            {/* Tipo de Transacción */}
                             <div className="col-md-4">
                                 <label className="form-label">Tipo</label>
-                                <select 
+                                <select
                                     className="form-select"
                                     value={tipo}
                                     onChange={(e) => setTipo(e.target.value)}
                                 >
                                     <option value="enviar">Enviar dinero</option>
                                     <option value="cobrar">Cobrar del banco</option>
+                                    <option value="pagar">Pagar al banco</option>
                                 </select>
                             </div>
 
+                            {/* Destino (Solo si es "Enviar") */}
                             {tipo === "enviar" && (
                                 <div className="col-md-4">
                                     <label className="form-label">Destino</label>
-                                    <select 
+                                    <select
                                         className="form-select"
                                         value={destino}
                                         onChange={(e) => setDestino(e.target.value)}
@@ -135,30 +163,34 @@ const Transaction = () => {
 
                         <br />
 
+                        {/* Botón Confirmar */}
                         <div className='text-center'>
                             <button type="submit" className="btn btn-success">Confirmar</button>
                         </div>
 
                         <br />
 
+                        {/* Historial de Transacciones */}
                         <div className="border-top pt-3 p-0">
                             <h5 className="text-center">Historial de transacciones</h5>
-                            <div className="list-group">
-                                {transacciones.map((t, index) => (
-                                    <div key={index} className="list-group-item d-flex justify-content-between">
-                                        <div>
-                                            <h6 className="mb-1">
-                                                {t.origen} {t.tipo === "enviar" ? "→" : "⤴"} {t.destino}
-                                            </h6>
-                                            <small className="text-muted">
-                                                {t.tipo === "enviar" ? "Transferencia" : "Depósito del banco"}
-                                            </small>
+                            <div className="historial-container">
+                                <div className="list-group list-group-historial">
+                                    {transacciones.map((t, index) => (
+                                        <div key={index} className="list-group-item list-group-item-historial d-flex justify-content-between">
+                                            <div>
+                                                <h6 className="mb-1">
+                                                    {t.tipo === "enviar" || t.tipo === "pagar" ? `${t.origen} -> ${t.destino}` : `${t.destino} -> ${t.origen}`}
+                                                </h6>
+                                                <small className="text-muted">
+                                                    {t.tipo === "enviar" ? "Transferencia" : t.tipo === "cobrar" ? "Depósito del banco" : "Pago al banco"}
+                                                </small>
+                                            </div>
+                                            <span className={`badge ${t.tipo === "enviar" || t.tipo === "pagar" ? "bg-danger" : "bg-success"}`}>
+                                                {t.tipo === "enviar" || t.tipo === "pagar" ? "- $" : "+ $"}{Math.abs(t.monto)}
+                                            </span>
                                         </div>
-                                        <span className={`badge ${t.tipo === "enviar" ? "bg-danger" : "bg-success"}`}>
-                                            {t.tipo === "enviar" ? "- $" : "+ $"}{t.monto}
-                                        </span>
-                                    </div>
-                                ))}
+                                    ))}
+                                </div>
                             </div>
                         </div>
 
