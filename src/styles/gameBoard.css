@@ -18,11 +18,11 @@
     padding: 2rem;
 }
 
-/* .list-group {
+.list-group-historial {
     margin-top: 1rem;
 }
 
-.list-group-item {
+.list-group-item-historial {
     font-size: 1rem;
     border: none;
     padding: 0.75rem;
@@ -33,9 +33,9 @@
     transition: background 0.3s ease-in-out;
 }
 
-.list-group-item:hover {
+.list-group-item-historial:hover {
     background: #e9ecef;
-} */
+}
 
 .btn-despegable,
 .btn-transacciones {

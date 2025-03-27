@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";  // Importar useParams
+import { useParams } from "react-router-dom";
 import { getFirestore, doc, updateDoc, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-toastify";
 import "../styles/transaction.css";
 
 const Transaction = () => {
-    const { codigo } = useParams(); // Obtener el código de la URL
+    const { codigo } = useParams();
     const [monto, setMonto] = useState("");
     const [tipo, setTipo] = useState("enviar");
     const [destino, setDestino] = useState("");
@@ -18,7 +18,7 @@ const Transaction = () => {
     const usuarioActual = auth.currentUser;
 
     useEffect(() => {
-        if (!codigo) return;  // Evita ejecutar si codigo es undefined
+        if (!codigo) return;
 
         const partidaRef = doc(db, "partidas", codigo);
         const unsub = onSnapshot(partidaRef, (docSnap) => {
@@ -34,44 +34,50 @@ const Transaction = () => {
     const handleConfirmar = async (e) => {
         e.preventDefault();
         if (!monto || isNaN(monto) || monto <= 0) {
-            toast.error("Ingrese un monto válido.", {autoClose: 3000, theme:"light"})
+            toast.error("Ingrese un monto válido.", { autoClose: 3000, theme: "light" });
             return;
         }
 
         const montoNum = parseFloat(monto);
         const jugadorActual = partida?.jugadores.find(j => j.uid === usuarioActual?.uid);
-        const jugadorDestino = partida?.jugadores.find(j => j.uid === destino);
 
         if (!jugadorActual) {
-            toast.error("Jugador no encontrado.", {autoClose: 3000, theme:"light"})
+            toast.error("Jugador no encontrado.", { autoClose: 3000, theme: "light" });
             return;
         }
 
-        if (tipo === "enviar") {
-            if (!jugadorDestino) {
-                toast.error("Seleccione un destino válido.", {autoClose: 3000, theme:"light"})
-                return;
-            }
-            if (jugadorActual.saldo < montoNum) {
-                toast.error("Saldo insuficiente.", {autoClose: 3000, theme:"light"})
-                return;
-            }
-
-            // Actualizar saldos
-            jugadorActual.saldo -= montoNum;
-            jugadorDestino.saldo += montoNum;
-        } else if (tipo === "cobrar") {
-            jugadorActual.saldo += montoNum;
-        }
-
-        // Agregar la transacción al historial
-        const nuevaTransaccion = {
+        let nuevaTransaccion = {
             id: Date.now(),
             origen: jugadorActual.nombre,
-            destino: tipo === "enviar" ? jugadorDestino.nombre : "Banco",
+            destino: "",
             monto: montoNum,
             tipo: tipo
         };
+
+        if (tipo === "enviar") {
+            const jugadorDestino = partida?.jugadores.find(j => j.uid === destino);
+            if (!jugadorDestino) {
+                toast.error("Seleccione un destino válido.", { autoClose: 3000, theme: "light" });
+                return;
+            }
+            if (jugadorActual.saldo < montoNum) {
+                toast.error("Saldo insuficiente.", { autoClose: 3000, theme: "light" });
+                return;
+            }
+            jugadorActual.saldo -= montoNum;
+            jugadorDestino.saldo += montoNum;
+            nuevaTransaccion.destino = jugadorDestino.nombre;
+        } else if (tipo === "cobrar") {
+            jugadorActual.saldo += montoNum;
+            nuevaTransaccion.destino = "Banco";
+        } else if (tipo === "pagar") {
+            if (jugadorActual.saldo < montoNum) {
+                toast.error("Saldo insuficiente para pagar al banco.", { autoClose: 3000, theme: "light" });
+                return;
+            }
+            jugadorActual.saldo -= montoNum;
+            nuevaTransaccion.destino = "Banco";
+        }
 
         const partidaRef = doc(db, "partidas", codigo);
         await updateDoc(partidaRef, {
@@ -93,7 +99,7 @@ const Transaction = () => {
                         <div className="row align-items-center">
                             <div className="col-md-4">
                                 <label className="form-label">Monto</label>
-                                <input 
+                                <input
                                     type="number"
                                     className="form-control"
                                     value={monto}
@@ -103,20 +109,21 @@ const Transaction = () => {
 
                             <div className="col-md-4">
                                 <label className="form-label">Tipo</label>
-                                <select 
+                                <select
                                     className="form-select"
                                     value={tipo}
                                     onChange={(e) => setTipo(e.target.value)}
                                 >
                                     <option value="enviar">Enviar dinero</option>
                                     <option value="cobrar">Cobrar del banco</option>
+                                    <option value="pagar">Pagar al banco</option>
                                 </select>
                             </div>
 
                             {tipo === "enviar" && (
                                 <div className="col-md-4">
                                     <label className="form-label">Destino</label>
-                                    <select 
+                                    <select
                                         className="form-select"
                                         value={destino}
                                         onChange={(e) => setDestino(e.target.value)}
@@ -144,24 +151,25 @@ const Transaction = () => {
 
                         <div className="border-top pt-3 p-0">
                             <h5 className="text-center">Historial de transacciones</h5>
-                            <div className="list-group">
+                            <div className="list-group list-group-historial">
                                 {transacciones.map((t, index) => (
-                                    <div key={index} className="list-group-item d-flex justify-content-between">
+                                    <div key={index} className="list-group-item list-group-item-historial d-flex justify-content-between">
                                         <div>
                                             <h6 className="mb-1">
-                                                {t.origen} {t.tipo === "enviar" ? "->" : "<-"} {t.destino}
+                                                {t.tipo === "enviar" || t.tipo === "pagar" ? `${t.origen} -> ${t.destino}` : `${t.destino} -> ${t.origen}`}
                                             </h6>
                                             <small className="text-muted">
-                                                {t.tipo === "enviar" ? "Transferencia" : "Depósito del banco"}
+                                                {t.tipo === "enviar" ? "Transferencia" : t.tipo === "cobrar" ? "Depósito del banco" : "Pago al banco"}
                                             </small>
                                         </div>
-                                        <span className={`badge ${t.tipo === "enviar" ? "bg-danger" : "bg-success"}`}>
-                                            {t.tipo === "enviar" ? "- $" : "+ $"}{t.monto}
+                                        <span className={`badge ${t.tipo === "enviar" || t.tipo === "pagar" ? "bg-danger" : "bg-success"}`}>
+                                            {t.tipo === "enviar" || t.tipo === "pagar" ? "- $" : "+ $"}{Math.abs(t.monto)}
                                         </span>
                                     </div>
                                 ))}
                             </div>
                         </div>
+
 
                     </form>
                 </div>
