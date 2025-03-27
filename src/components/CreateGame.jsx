@@ -30,39 +30,17 @@ const CreateGame = () => {
     useEffect(() => {
         if (isExecuted.current) return;
         isExecuted.current = true;
-
-        const verificarYCrearPartida = async () => {
+    
+        const crearNuevaPartida = async () => {
             const user = auth.currentUser;
             if (!user) return;
-
+    
             const userNombre = user.displayName || "Jugador";
-
-            // Consulta si el usuario tiene una partida existente
-            const partidasQuery = query(collection(db, "partidas"), where("uidCreador", "==", user.uid));
-            const querySnapshot = await getDocs(partidasQuery);
-
-            if (!querySnapshot.empty) {
-                const partidaExistente = querySnapshot.docs[0].data();
-
-                // Si la partida aún no ha terminado, continuar en ella
-                if (partidaExistente.estado === "No iniciada" || partidaExistente.estado === "iniciada") {
-                    setCodigo(partidaExistente.codigo);
-                    setParticipantes(partidaExistente.jugadores);
-                    setEstado(partidaExistente.estado);
-
-                    // Si la partida ya está iniciada, redirigir automáticamente
-                    if (partidaExistente.estado === "iniciada") {
-                        navigate(`/partida/${partidaExistente.codigo}`);
-                    }
-
-                    return;
-                }
-            }
-
-            // Si no hay partidas activas, crear una nueva
+    
+            // Generar un nuevo código de partida
             const nuevoCodigo = generarCodigo();
             const partidasRef = doc(db, "partidas", nuevoCodigo);
-
+    
             await setDoc(partidasRef, {
                 codigo: nuevoCodigo,
                 estado: "No iniciada",
@@ -72,29 +50,29 @@ const CreateGame = () => {
                     { uid: user.uid, nombre: userNombre, saldo: 1500 }
                 ]
             });
-
+    
             setCodigo(nuevoCodigo);
             setParticipantes([{ uid: user.uid, nombre: userNombre, saldo: 1500 }]);
             setEstado("No iniciada");
-
+    
             // Escuchar cambios en la partida
             const unsub = onSnapshot(partidasRef, (docSnap) => {
                 if (docSnap.exists()) {
                     setParticipantes(docSnap.data().jugadores);
                     setEstado(docSnap.data().estado);
-
+    
                     if (docSnap.data().estado === "iniciada") {
                         navigate(`/partida/${nuevoCodigo}`);
                     }
                 }
             });
-
+    
             return () => unsub();
         };
-
-        verificarYCrearPartida();
+    
+        crearNuevaPartida();
     }, [navigate]);
-
+    
     const copiarCodigo = () => {
         navigator.clipboard.writeText(codigo);
         alert("Código copiado: " + codigo);

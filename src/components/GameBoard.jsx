@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { getFirestore, doc, onSnapshot } from "firebase/firestore";
-import { getAuth } from "firebase/auth";
+import { getAuth, signOut } from "firebase/auth";
 import { BsBoxArrowRight } from "react-icons/bs";
 import "../styles/gameBoard.css";
 
+
 const GameBoard = () => {
-    const { codigo } = useParams(); // Obtiene el código de la URL
+    const { codigo } = useParams(); 
+    const navigate = useNavigate(); 
     const [partida, setPartida] = useState(null);
     const auth = getAuth();
     const db = getFirestore();
@@ -28,6 +30,24 @@ const GameBoard = () => {
 
     const jugadorActual = partida.jugadores.find(j => j.uid === auth.currentUser?.uid);
 
+    // Función para declarar bancarrota
+    const handleBancarrota = async () => {
+        if (!jugadorActual) return;
+
+        if (jugadorActual.saldo > 0) {
+            alert("No puedes declararte en bancarrota si aún tienes saldo.");
+            return;
+        }
+            // Redirige al inicio del juego pero no cierra la sesión 
+        navigate(`/inicio`); 
+    };
+
+    // Función para salir del juego (cerrar sesión)
+    const handleSalir = async () => {
+        await signOut(auth);
+        navigate("/login"); // Redirige al login
+    };
+
     return (
         <div className="container-game">
             <div className="card card-game">
@@ -39,7 +59,7 @@ const GameBoard = () => {
                     <h5 className="text-center">Lista de participantes</h5>
                     <ul className="list-group">
                         {partida.jugadores
-                            .filter(p => p.uid !== jugadorActual?.uid) // Filtra al jugador actual
+                            .filter(p => p.uid !== jugadorActual?.uid)
                             .map((p, index) => (
                                 <li key={index} className="list-group-item d-flex justify-content-between">
                                     {p.nombre} <span>${p.saldo}</span>
@@ -48,14 +68,16 @@ const GameBoard = () => {
                     </ul>
 
 
+
                     <div className="d-flex justify-content-between mt-3 gap-2">
+
                         <div className="dropdown">
                             <button className="btn btn-secondary btn-despegable dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                 <BsBoxArrowRight />
                             </button>
                             <ul className="dropdown-menu">
-                                <li><a className="dropdown-item" href="#">Bancarrota</a></li>
-                                <li><a className="dropdown-item" href="#">Salir del juego</a></li>
+                                <li><button className="dropdown-item" onClick={handleBancarrota}>Bancarrota</button></li>
+                                <li><button className="dropdown-item" onClick={handleSalir}>Salir del juego</button></li>
                             </ul>
                         </div>
                         <button className="btn btn-primary btn-transacciones">
