@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom"; // Importa useNavigate
 import { getFirestore, doc, updateDoc, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-toastify";
@@ -7,6 +7,7 @@ import "../styles/transaction.css";
 
 const Transaction = () => {
     const { codigo } = useParams();
+    const navigate = useNavigate(); // Hook para la navegación
     const [monto, setMonto] = useState("");
     const [tipo, setTipo] = useState("enviar");
     const [destino, setDestino] = useState("");
@@ -56,7 +57,7 @@ const Transaction = () => {
             destino: "",
             monto: montoNum,
             tipo: tipo,
-            fecha: new Date().toLocaleString() // Agrega la fecha y hora
+            fecha: new Date().toLocaleString()
         };
 
         if (tipo === "enviar") {
@@ -164,6 +165,19 @@ const Transaction = () => {
 
                         <br />
 
+                        {/* Botón Volver */}
+                        <div className="text-center">
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={() => navigate(`/partida/${codigo}`)} // Vuelve a la partida
+                            >
+                                Volver
+                            </button>
+                        </div>
+
+                        <br />
+
                         <div className="border-top pt-3 p-0">
                             <h5 className="text-center">Historial de transacciones</h5>
                             <div className="historial-container">
@@ -178,7 +192,7 @@ const Transaction = () => {
                                                     {t.tipo === "enviar" ? "Transferencia" : t.tipo === "cobrar" ? "Depósito del banco" : "Pago al banco"}
                                                 </small>
                                                 <br />
-                                                <small className="text-muted">{t.fecha}</small> {/* Muestra la fecha de la transacción */}
+                                                <small className="text-muted">{t.fecha}</small>
                                             </div>
                                             <span className={`badge ${t.tipo === "enviar" || t.tipo === "pagar" ? "bg-danger" : "bg-success"}`}>
                                                 {t.tipo === "enviar" || t.tipo === "pagar" ? "- $" : "+ $"}{Math.abs(t.monto)}
